@@ -1,5 +1,5 @@
 ---
-name: todo-list
+name: todo-list2
 description: A persistent todo list that displays in a floating HTML window. Add, complete, and delete tasks with the current list always visible.
 metadata:
   homepage: https://github.com/anlach/edge-skills
