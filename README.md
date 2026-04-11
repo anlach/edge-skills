@@ -8,8 +8,10 @@ After enabling GitHub Pages: `https://anlach.github.io/edge-skills/`
 
 ## How to Add Skills
 
-Skills are stored as folders. Each skill folder must contain a `SKILL.md` file.
+Skills are stored as folders. Each skill folder must contain a `SKILL. md` file.
 
 ## Existing Skills
 
-- (none yet - add your first!)
+| Skill | Description |
+|-------|-------------|
+| [spanish-tutor](./spanish-tutor/) | A friendly Spanish language tutor for all levels |
