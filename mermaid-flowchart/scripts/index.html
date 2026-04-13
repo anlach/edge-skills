@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mermaid Flowchart Renderer</title>
+    <title>Mermaid Flowchart</title>
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 </head>
 <body>
-    <div id="chart-container"></div>
     <script>
         mermaid.initialize({
             startOnLoad: false,
@@ -37,9 +36,7 @@
                 const { svg } = await mermaid.render(id, mermaidCode);
 
                 return JSON.stringify({
-                    success: true,
-                    svg: svg,
-                    mermaidCode: mermaidCode
+                    result: svg
                 });
 
             } catch (e) {
