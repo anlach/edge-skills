@@ -7,22 +7,17 @@
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 </head>
 <body>
+    <canvas id="render-canvas" style="display: none;"></canvas>
     <script>
         mermaid.initialize({
             startOnLoad: false,
             theme: 'default',
-            flowchart: {
-                useMaxWidth: true,
-                htmlLabels: true,
-                curve: 'basis'
-            }
+            flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' }
         });
 
-        window['ai_edge_gallery_get_result'] = async (data) => {
+        window['ai_edge_gallery_get_result'] = async (data, secret) => {
             try {
-                // Sanitize: escape any raw control characters (U+0000-U+001F)
-                // before parsing. The Edge Gallery app may pass JSON with
-                // unescaped newlines in mermaid syntax, which JSON.parse rejects.
+                // Sanitize raw control characters before JSON.parse.
                 const sanitized = data.replace(/[\x00-\x1f]/g, (ch) => {
                     const code = ch.charCodeAt(0);
                     switch(code) {
@@ -36,27 +31,60 @@
                 const mermaidCode = jsonData.mermaid || jsonData.code || '';
 
                 if (!mermaidCode || typeof mermaidCode !== 'string') {
-                    return JSON.stringify({
-                        error: 'No mermaid code provided. Please provide mermaid flowchart syntax.'
-                    });
+                    return JSON.stringify({ result: null, image: null, error: 'No mermaid code provided.' });
                 }
 
-                // Generate unique ID for this render
-                const id = 'mermaid-chart-' + Math.random().toString(36).substr(2, 9);
-
-                // Render the mermaid diagram (returns { svg, bindFunctions })
+                // Render mermaid to SVG.
+                const id = 'mermaid-' + Math.random().toString(36).substr(2, 9);
                 const { svg } = await mermaid.render(id, mermaidCode);
 
+                // Parse SVG dimensions.
+                const parser = new DOMParser();
+                const svgDoc = parser.parseFromString(svg, 'image/svg+xml');
+                const svgEl = svgDoc.querySelector('svg');
+                const vb = svgEl.getAttribute('viewBox');
+                let w = 800, h = 600;
+                if (vb) {
+                    const parts = vb.split(/[\s,]+/).map(Number);
+                    if (parts.length === 4) { w = parts[2]; h = parts[3]; }
+                }
+                const ew = svgEl.getAttribute('width');
+                const eh = svgEl.getAttribute('height');
+                if (ew && !ew.endsWith('%')) w = parseFloat(ew);
+                if (eh && !eh.endsWith('%')) h = parseFloat(eh);
+
+                // Use data URI instead of blob URL to avoid tainted canvas.
+                const svgDataUri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+
+                // Draw onto canvas.
+                const scale = 2;
+                const canvasW = Math.min(Math.round(w * scale), 2048);
+                const canvasH = Math.min(Math.round(h * scale), 2048);
+
+                const base64 = await new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.getElementById('render-canvas');
+                        canvas.width = canvasW;
+                        canvas.height = canvasH;
+                        const ctx = canvas.getContext('2d');
+                        ctx.clearRect(0, 0, canvasW, canvasH);
+                        ctx.drawImage(img, 0, 0, canvasW, canvasH);
+                        resolve(canvas.toDataURL('image/png'));
+                    };
+                    img.onerror = () => reject(new Error('Failed to load SVG'));
+                    img.src = svgDataUri;
+                });
+
                 return JSON.stringify({
-                    result: svg
+                    result: 'Flowchart rendered',
+                    image: { base64: base64 },
+                    error: null
                 });
 
             } catch (e) {
                 console.error(e);
-                return JSON.stringify({
-                    error: `Failed to render flowchart: ${e.message}`,
-                    details: e.stack
-                });
+                return JSON.stringify({ result: null, image: null, error: 'Failed: ' + e.message });
             }
         };
     </script>
