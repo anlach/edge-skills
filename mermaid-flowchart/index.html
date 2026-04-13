@@ -9,10 +9,20 @@
 <body>
     <div id="chart-container"></div>
     <script>
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'default',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            }
+        });
+
         window['ai_edge_gallery_get_result'] = async (data) => {
             try {
                 const jsonData = JSON.parse(data);
-                const mermaidCode = jsonData.mermaid;
+                const mermaidCode = jsonData.mermaid || jsonData.code || '';
 
                 if (!mermaidCode || typeof mermaidCode !== 'string') {
                     return JSON.stringify({
@@ -20,84 +30,18 @@
                     });
                 }
 
-                // Initialize mermaid
-                mermaid.initialize({
-                    startOnLoad: false,
-                    theme: 'default',
-                    flowchart: {
-                        useMaxWidth: true,
-                        htmlLabels: true,
-                        curve: 'basis'
-                    }
-                });
-
                 // Generate unique ID for this render
                 const id = 'mermaid-chart-' + Math.random().toString(36).substr(2, 9);
-                
-                // Render the mermaid diagram
+
+                // Render the mermaid diagram (returns { svg, bindFunctions })
                 const { svg } = await mermaid.render(id, mermaidCode);
-                
-                // Create a container with the SVG
-                const container = document.getElementById('chart-container');
-                container.innerHTML = svg;
-                
-                const svgElement = container.querySelector('svg');
-                
-                // Convert SVG to PNG using canvas
-                const svgData = new XMLSerializer().serializeToString(svgElement);
-                const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-                const url = URL.createObjectURL(svgBlob);
-                
-                const img = new Image();
-                img.onload = function() {
-                    const canvas = document.createElement('canvas');
-                    const scale = 2; // Higher resolution
-                    canvas.width = svgElement.clientWidth * scale;
-                    canvas.height = svgElement.clientHeight * scale;
-                    
-                    const ctx = canvas.getContext('2d');
-                    ctx.scale(scale, scale);
-                    ctx.fillStyle = 'white';
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    ctx.drawImage(img, 0, 0);
-                    
-                    const pngDataUrl = canvas.toDataURL('image/png');
-                    
-                    // Return the result
-                    const result = {
-                        image: pngDataUrl,
-                        svg: svgData,
-                        width: svgElement.clientWidth,
-                        height: svgElement.clientHeight
-                    };
-                    
-                    window['mermaid-result'] = JSON.stringify(result);
-                    URL.revokeObjectURL(url);
-                };
-                
-                img.onerror = function() {
-                    throw new Error('Failed to load rendered SVG');
-                };
-                
-                img.src = url;
-                
-                // Wait for image to load and result to be ready
-                await new Promise((resolve, reject) => {
-                    const checkResult = setInterval(() => {
-                        if (window['mermaid-result']) {
-                            clearInterval(checkResult);
-                            resolve();
-                        }
-                    }, 50);
-                    
-                    setTimeout(() => {
-                        clearInterval(checkResult);
-                        reject(new Error('Timeout waiting for render'));
-                    }, 5000);
+
+                return JSON.stringify({
+                    success: true,
+                    svg: svg,
+                    mermaidCode: mermaidCode
                 });
-                
-                return window['mermaid-result'];
-                
+
             } catch (e) {
                 console.error(e);
                 return JSON.stringify({
