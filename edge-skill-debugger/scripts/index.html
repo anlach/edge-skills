@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edge Skill Debugger</title>
+</head>
+<body>
+    <script>
+        window['ai_edge_gallery_get_result'] = async (data) => {
+            try {
+                const jsonData = JSON.parse(data);
+                const skillUrl = jsonData.skillUrl;
+                const inputData = jsonData.inputData;
+                
+                if (!skillUrl) {
+                    return JSON.stringify({ error: 'No skillUrl provided. Expected: { "skillUrl": "...", "inputData": {...} }' });
+                }
+                
+                // Normalize URL - ensure it ends with index.html
+                let targetUrl = skillUrl;
+                if (!targetUrl.endsWith('/')) targetUrl += '/';
+                if (!targetUrl.endsWith('index.html')) targetUrl += 'index.html';
+                
+                // Fetch the skill's HTML
+                const response = await fetch(targetUrl);
+                if (!response.ok) {
+                    return JSON.stringify({ error: `Failed to fetch skill: ${response.status} ${response.statusText}` });
+                }
+                const skillHtml = await response.text();
+                
+                // Extract the ai_edge_gallery_get_result function from the skill
+                const functionMatch = skillHtml.match(/window\s*\[\s*['"]ai_edge_gallery_get_result['"]\s*\]\s*=\s*async\s*\([^)]*\)\s*=>\s*\{/);
+                if (!functionMatch) {
+                    return JSON.stringify({ error: 'Could not find ai_edge_gallery_get_result function in skill HTML' });
+                }
+                
+                // Create a sandboxed iframe to run the skill
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                document.body.appendChild(iframe);
+                
+                // Inject the skill HTML and wait for it to load
+                await new Promise((resolve, reject) => {
+                    iframe.onload = resolve;
+                    iframe.onerror = reject;
+                    iframe.srcdoc = skillHtml;
+                });
+                
+                // Give the script time to initialize
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Get the skill's function
+                const skillFunction = iframe.contentWindow['ai_edge_gallery_get_result'];
+                if (!skillFunction) {
+                    document.body.removeChild(iframe);
+                    return JSON.stringify({ error: 'Skill function not found after load' });
+                }
+                
+                // Capture console output
+                const consoleLogs = [];
+                const originalLog = iframe.contentWindow.console.log;
+                const originalError = iframe.contentWindow.console.error;
+                const originalWarn = iframe.contentWindow.console.warn;
+                
+                iframe.contentWindow.console.log = (...args) => {
+                    consoleLogs.push({ type: 'log', message: args.map(a => String(a)).join(' ') });
+                    originalLog.apply(iframe.contentWindow.console, args);
+                };
+                iframe.contentWindow.console.error = (...args) => {
+                    consoleLogs.push({ type: 'error', message: args.map(a => String(a)).join(' ') });
+                    originalError.apply(iframe.contentWindow.console, args);
+                };
+                iframe.contentWindow.console.warn = (...args) => {
+                    consoleLogs.push({ type: 'warn', message: args.map(a => String(a)).join(' ') });
+                    originalWarn.apply(iframe.contentWindow.console, args);
+                };
+                
+                // Run the skill with input data
+                let result;
+                let threw = null;
+                try {
+                    result = await skillFunction(JSON.stringify(inputData));
+                } catch (e) {
+                    threw = { message: e.message, stack: e.stack };
+                }
+                
+                // Cleanup
+                document.body.removeChild(iframe);
+                
+                // Parse result if it's a string
+                let parsedResult = null;
+                let rawResult = result;
+                if (result && typeof result === 'string') {
+                    try {
+                        parsedResult = JSON.parse(result);
+                    } catch (e) {
+                        parsedResult = { notJson: result };
+                    }
+                }
+                
+                return JSON.stringify({
+                    success: true,
+                    skillUrl: targetUrl,
+                    inputData: inputData,
+                    output: parsedResult,
+                    rawOutput: rawResult,
+                    threw: threw,
+                    console: consoleLogs
+                });
+                
+            } catch (e) {
+                return JSON.stringify({
+                    error: `Debugger failed: ${e.message}`,
+                    stack: e.stack
+                });
+            }
+        };
+    </script>
+</body>
+</html>
