@@ -13,20 +13,21 @@
             align-items: center; padding: 24px; min-height: 100vh;
         }
         #diagram-wrapper {
-            position: relative; display: inline-block; background: #ffffff;
-            border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); overflow: hidden;
+            position: relative; display: inline-block; background: #1e1e2e;
+            border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); overflow: hidden;
+            padding: 16px;
         }
         #diagram-wrapper img { display: block; max-width: 100%; height: auto; }
         #copy-btn {
             position: absolute; top: 10px; right: 10px; width: 40px; height: 40px;
-            border: none; border-radius: 8px; background: rgba(255,255,255,0.9);
-            color: #333; cursor: pointer; display: flex; align-items: center;
-            justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-            transition: all 0.2s ease; opacity: 0.7; z-index: 10;
+            border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; background: rgba(255,255,255,0.1);
+            color: #e0e0e0; cursor: pointer; display: flex; align-items: center;
+            justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            transition: all 0.2s ease; opacity: 0.6; z-index: 10; backdrop-filter: blur(4px);
         }
-        #copy-btn:hover { opacity: 1; background: #ffffff; transform: scale(1.05); }
+        #copy-btn:hover { opacity: 1; background: rgba(255,255,255,0.2); transform: scale(1.05); }
         #copy-btn:active { transform: scale(0.95); }
-        #copy-btn.copied { background: #4caf50; color: white; opacity: 1; }
+        #copy-btn.copied { background: #4caf50; color: white; opacity: 1; border-color: #4caf50; }
         #copy-btn svg { width: 20px; height: 20px; }
         #status-msg { margin-top: 16px; font-size: 14px; color: #aaa; text-align: center; min-height: 20px; }
         #error-msg {
@@ -62,7 +63,41 @@
     <script>
         mermaid.initialize({
             startOnLoad: false,
-            theme: 'default',
+            theme: 'dark',
+            themeVariables: {
+                darkMode: true,
+                background: '#1e1e2e',
+                primaryColor: '#2d2d44',
+                primaryTextColor: '#e0e0e0',
+                primaryBorderColor: '#4a4a6a',
+                lineColor: '#7c7caa',
+                secondaryColor: '#2a2a3d',
+                tertiaryColor: '#252538',
+                fontFamily: 'system-ui, -apple-system, sans-serif',
+                fontSize: '14px',
+                nodeTextColor: '#e0e0e0',
+                mainBkg: '#2d2d44',
+                nodeBorder: '#4a4a6a',
+                clusterBkg: '#252538',
+                clusterBorder: '#4a4a6a',
+                titleColor: '#e0e0e0',
+                edgeLabelBackground: '#2a2a3d',
+                noteBkgColor: '#2d2d44',
+                noteTextColor: '#e0e0e0',
+                noteBorderColor: '#4a4a6a',
+                actorBkg: '#2d2d44',
+                actorBorder: '#4a4a6a',
+                actorTextColor: '#e0e0e0',
+                signalColor: '#e0e0e0',
+                signalTextColor: '#e0e0e0',
+                labelBoxBkgColor: '#2a2a3d',
+                labelBoxBorderColor: '#4a4a6a',
+                labelTextColor: '#e0e0e0',
+                loopTextColor: '#e0e0e0',
+                activationBorderColor: '#6a6aaa',
+                activationBkgColor: '#35354f',
+                sequenceNumberColor: '#e0e0e0'
+            },
             flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' },
             sequence: { useMaxWidth: true },
             er: { useMaxWidth: true }
@@ -189,7 +224,8 @@
                         canvas.width = canvasW;
                         canvas.height = canvasH;
                         var ctx = canvas.getContext('2d');
-                        ctx.clearRect(0, 0, canvasW, canvasH);
+                        ctx.fillStyle = '#1e1e2e';
+                        ctx.fillRect(0, 0, canvasW, canvasH);
                         ctx.drawImage(img, 0, 0, canvasW, canvasH);
 
                         // Store for clipboard copy button.
