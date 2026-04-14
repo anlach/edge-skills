@@ -8,110 +8,36 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #1a1a2e; color: #e0e0e0; font-family: system-ui, -apple-system, sans-serif; }
-
         #diagram-container {
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 24px;
-            min-height: 100vh;
+            position: relative; display: flex; flex-direction: column;
+            align-items: center; padding: 24px; min-height: 100vh;
         }
-
         #diagram-wrapper {
-            position: relative;
-            display: inline-block;
-            background: #ffffff;
-            border-radius: 12px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-            overflow: hidden;
+            position: relative; display: inline-block; background: #ffffff;
+            border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); overflow: hidden;
         }
-
-        #diagram-wrapper img {
-            display: block;
-            max-width: 100%;
-            height: auto;
-        }
-
+        #diagram-wrapper img { display: block; max-width: 100%; height: auto; }
         #copy-btn {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            width: 40px;
-            height: 40px;
-            border: none;
-            border-radius: 8px;
-            background: rgba(255,255,255,0.9);
-            color: #333;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-            transition: all 0.2s ease;
-            opacity: 0.7;
-            z-index: 10;
+            position: absolute; top: 10px; right: 10px; width: 40px; height: 40px;
+            border: none; border-radius: 8px; background: rgba(255,255,255,0.9);
+            color: #333; cursor: pointer; display: flex; align-items: center;
+            justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            transition: all 0.2s ease; opacity: 0.7; z-index: 10;
         }
-
-        #copy-btn:hover {
-            opacity: 1;
-            background: #ffffff;
-            transform: scale(1.05);
-        }
-
-        #copy-btn:active {
-            transform: scale(0.95);
-        }
-
-        #copy-btn.copied {
-            background: #4caf50;
-            color: white;
-            opacity: 1;
-        }
-
-        /* Clipboard icon (SVG inline) */
-        #copy-btn svg {
-            width: 20px;
-            height: 20px;
-        }
-
-        #status-msg {
-            margin-top: 16px;
-            font-size: 14px;
-            color: #aaa;
-            text-align: center;
-            min-height: 20px;
-        }
-
+        #copy-btn:hover { opacity: 1; background: #ffffff; transform: scale(1.05); }
+        #copy-btn:active { transform: scale(0.95); }
+        #copy-btn.copied { background: #4caf50; color: white; opacity: 1; }
+        #copy-btn svg { width: 20px; height: 20px; }
+        #status-msg { margin-top: 16px; font-size: 14px; color: #aaa; text-align: center; min-height: 20px; }
         #error-msg {
-            margin-top: 12px;
-            padding: 12px 20px;
-            background: #ff5252;
-            color: white;
-            border-radius: 8px;
-            font-size: 14px;
-            display: none;
-            max-width: 600px;
-            word-break: break-word;
+            margin-top: 12px; padding: 12px 20px; background: #ff5252; color: white;
+            border-radius: 8px; font-size: 14px; display: none; max-width: 600px; word-break: break-word;
         }
-
-        #loading {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 60px;
-        }
-
+        #loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px; }
         .spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid #333;
-            border-top: 3px solid #7c4dff;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
+            width: 40px; height: 40px; border: 3px solid #333; border-top: 3px solid #7c4dff;
+            border-radius: 50%; animation: spin 0.8s linear infinite;
         }
-
         @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
@@ -124,10 +50,7 @@
         <div id="diagram-wrapper" style="display:none;">
             <img id="diagram-img" src="" alt="Mermaid Diagram" />
             <button id="copy-btn" title="Copy image to clipboard">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
             </button>
         </div>
         <div id="status-msg"></div>
@@ -145,46 +68,45 @@
             er: { useMaxWidth: true }
         });
 
-        // Store the rendered canvas for clipboard copying.
-        let _lastCanvas = null;
+        var _lastCanvas = null;
 
-        // Copy button handler.
-        document.getElementById('copy-btn').addEventListener('click', async () => {
-            const btn = document.getElementById('copy-btn');
-            const statusMsg = document.getElementById('status-msg');
+        // SVG strings for the copy button (no template literals for WebView compat).
+        var COPY_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+        var CHECK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+
+        document.getElementById('copy-btn').addEventListener('click', function() {
+            var btn = document.getElementById('copy-btn');
+            var statusMsg = document.getElementById('status-msg');
 
             if (!_lastCanvas) {
                 statusMsg.textContent = 'No diagram to copy.';
                 return;
             }
 
-            try {
-                // Convert canvas to PNG blob and copy to clipboard.
-                const blob = await new Promise(resolve => _lastCanvas.toBlob(resolve, 'image/png'));
-                await navigator.clipboard.write([
-                    new ClipboardItem({ 'image/png': blob })
-                ]);
-
-                // Visual feedback.
-                btn.classList.add('copied');
-                btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>`;
-                statusMsg.textContent = 'Copied to clipboard! ✓';
-
-                setTimeout(() => {
-                    btn.classList.remove('copied');
-                    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                    </svg>`;
-                    statusMsg.textContent = '';
-                }, 2000);
-
-            } catch (e) {
-                console.error('Clipboard copy failed:', e);
-                statusMsg.textContent = 'Copy failed — try right-click → Copy Image';
-            }
+            _lastCanvas.toBlob(function(blob) {
+                if (!blob) {
+                    statusMsg.textContent = 'Copy failed.';
+                    return;
+                }
+                try {
+                    navigator.clipboard.write([
+                        new ClipboardItem({ 'image/png': blob })
+                    ]).then(function() {
+                        btn.classList.add('copied');
+                        btn.innerHTML = CHECK_ICON;
+                        statusMsg.textContent = 'Copied to clipboard! \u2713';
+                        setTimeout(function() {
+                            btn.classList.remove('copied');
+                            btn.innerHTML = COPY_ICON;
+                            statusMsg.textContent = '';
+                        }, 2000);
+                    }).catch(function() {
+                        statusMsg.textContent = 'Copy failed \u2014 try long-press the image instead';
+                    });
+                } catch (e) {
+                    statusMsg.textContent = 'Copy not supported in this browser';
+                }
+            }, 'image/png');
         });
 
         // Extract mermaid code from the data parameter.
@@ -195,33 +117,27 @@
             if (typeof data !== 'string') return data || '';
 
             // Strategy 1: Standard JSON parse after sanitizing control characters.
-            const sanitized = data.replace(/[\x00-\x1f]/g, (ch) => {
-                const code = ch.charCodeAt(0);
-                switch(code) {
-                    case 0x0a: return '\\n';
-                    case 0x0d: return '\\r';
-                    case 0x09: return '\\t';
-                    default: return '\\u' + ('0000' + code.toString(16)).slice(-4);
-                }
+            var sanitized = data.replace(/[\x00-\x1f]/g, function(ch) {
+                var code = ch.charCodeAt(0);
+                if (code === 0x0a) return '\\n';
+                if (code === 0x0d) return '\\r';
+                if (code === 0x09) return '\\t';
+                return '\\u' + ('0000' + code.toString(16)).slice(-4);
             });
             try {
-                const json = JSON.parse(sanitized);
+                var json = JSON.parse(sanitized);
                 return json.mermaid || json.code || '';
             } catch(e) { /* fall through */ }
 
             // Strategy 2: Extract value from {"mermaid":"..."} or {"code":"..."}
             // even if the JSON is broken by raw quotes/newlines inside the value.
-            // Find the opening quote after "mermaid": or "code": and grab everything
-            // until the last closing quote + brace pattern.
-            const keyMatch = data.match(/"(?:mermaid|code)"\s*:\s*"/);
+            var keyMatch = data.match(/"(?:mermaid|code)"\s*:\s*"/);
             if (keyMatch) {
-                const startIdx = keyMatch.index + keyMatch[0].length;
-                // Find the last "} or last " in the string — the value ends there.
-                const lastBrace = data.lastIndexOf('"}');
-                const endIdx = lastBrace > startIdx ? lastBrace : data.lastIndexOf('"');
+                var startIdx = keyMatch.index + keyMatch[0].length;
+                var lastBrace = data.lastIndexOf('"}');
+                var endIdx = lastBrace > startIdx ? lastBrace : data.lastIndexOf('"');
                 if (endIdx > startIdx) {
-                    let raw = data.substring(startIdx, endIdx);
-                    // Unescape JSON string escapes that may have survived.
+                    var raw = data.substring(startIdx, endIdx);
                     raw = raw.replace(/\\n/g, '\n').replace(/\\r/g, '\r').replace(/\\t/g, '\t').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
                     return raw;
                 }
@@ -231,48 +147,48 @@
             return data;
         }
 
-        window['ai_edge_gallery_get_result'] = async (data, secret) => {
-            try {
-                const mermaidCode = extractMermaidCode(data);
+        window['ai_edge_gallery_get_result'] = function(data, secret) {
+            _lastCanvas = null;
+            var mermaidCode = extractMermaidCode(data);
 
-                if (!mermaidCode || typeof mermaidCode !== 'string') {
-                    return JSON.stringify({ result: null, image: null, error: 'No mermaid code provided.' });
-                }
+            if (!mermaidCode || typeof mermaidCode !== 'string') {
+                return JSON.stringify({ result: null, image: null, error: 'No mermaid code provided.' });
+            }
 
-                // Render mermaid to SVG.
-                const id = 'mermaid-' + Math.random().toString(36).substr(2, 9);
-                const { svg } = await mermaid.render(id, mermaidCode);
+            return new Promise(function(resolve, reject) {
+                var id = 'mermaid-' + Math.random().toString(36).substr(2, 9);
+                mermaid.render(id, mermaidCode).then(function(result) {
+                    var svg = result.svg;
 
-                // Parse SVG dimensions.
-                const parser = new DOMParser();
-                const svgDoc = parser.parseFromString(svg, 'image/svg+xml');
-                const svgEl = svgDoc.querySelector('svg');
-                const vb = svgEl.getAttribute('viewBox');
-                let w = 800, h = 600;
-                if (vb) {
-                    const parts = vb.split(/[\s,]+/).map(Number);
-                    if (parts.length === 4) { w = parts[2]; h = parts[3]; }
-                }
-                const ew = svgEl.getAttribute('width');
-                const eh = svgEl.getAttribute('height');
-                if (ew && !ew.endsWith('%')) w = parseFloat(ew);
-                if (eh && !eh.endsWith('%')) h = parseFloat(eh);
+                    // Parse SVG dimensions.
+                    var parser = new DOMParser();
+                    var svgDoc = parser.parseFromString(svg, 'image/svg+xml');
+                    var svgEl = svgDoc.querySelector('svg');
+                    var vb = svgEl.getAttribute('viewBox');
+                    var w = 800, h = 600;
+                    if (vb) {
+                        var parts = vb.split(/[\s,]+/).map(Number);
+                        if (parts.length === 4) { w = parts[2]; h = parts[3]; }
+                    }
+                    var ew = svgEl.getAttribute('width');
+                    var eh = svgEl.getAttribute('height');
+                    if (ew && !ew.endsWith('%')) w = parseFloat(ew);
+                    if (eh && !eh.endsWith('%')) h = parseFloat(eh);
 
-                // Use data URI instead of blob URL to avoid tainted canvas.
-                const svgDataUri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+                    // Use data URI instead of blob URL to avoid tainted canvas.
+                    var svgDataUri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
 
-                // Draw onto canvas.
-                const scale = 2;
-                const canvasW = Math.min(Math.round(w * scale), 2048);
-                const canvasH = Math.min(Math.round(h * scale), 2048);
+                    // Draw onto canvas.
+                    var scale = 2;
+                    var canvasW = Math.min(Math.round(w * scale), 2048);
+                    var canvasH = Math.min(Math.round(h * scale), 2048);
 
-                const base64 = await new Promise((resolve, reject) => {
-                    const img = new Image();
-                    img.onload = () => {
-                        const canvas = document.getElementById('render-canvas');
+                    var img = new Image();
+                    img.onload = function() {
+                        var canvas = document.getElementById('render-canvas');
                         canvas.width = canvasW;
                         canvas.height = canvasH;
-                        const ctx = canvas.getContext('2d');
+                        var ctx = canvas.getContext('2d');
                         ctx.clearRect(0, 0, canvasW, canvasH);
                         ctx.drawImage(img, 0, 0, canvasW, canvasH);
 
@@ -280,33 +196,32 @@
                         _lastCanvas = canvas;
 
                         // Show the rendered image in the viewer.
-                        const diagramImg = document.getElementById('diagram-img');
+                        var diagramImg = document.getElementById('diagram-img');
                         diagramImg.src = canvas.toDataURL('image/png');
                         document.getElementById('loading').style.display = 'none';
                         document.getElementById('diagram-wrapper').style.display = 'inline-block';
 
-                        resolve(canvas.toDataURL('image/png'));
+                        var base64 = canvas.toDataURL('image/png');
+                        resolve(JSON.stringify({
+                            result: 'Diagram rendered',
+                            image: { base64: base64 },
+                            error: null
+                        }));
                     };
-                    img.onerror = () => reject(new Error('Failed to load SVG'));
+                    img.onerror = function() {
+                        reject(new Error('Failed to load SVG'));
+                    };
                     img.src = svgDataUri;
+                }).catch(function(e) {
+                    // Show error in viewer.
+                    document.getElementById('loading').style.display = 'none';
+                    var errorEl = document.getElementById('error-msg');
+                    errorEl.textContent = 'Error: ' + e.message;
+                    errorEl.style.display = 'block';
+
+                    resolve(JSON.stringify({ result: null, image: null, error: 'Failed: ' + e.message }));
                 });
-
-                return JSON.stringify({
-                    result: 'Diagram rendered',
-                    image: { base64: base64 },
-                    error: null
-                });
-
-            } catch (e) {
-                console.error(e);
-                // Show error in viewer.
-                document.getElementById('loading').style.display = 'none';
-                const errorEl = document.getElementById('error-msg');
-                errorEl.textContent = 'Error: ' + e.message;
-                errorEl.style.display = 'block';
-
-                return JSON.stringify({ result: null, image: null, error: 'Failed: ' + e.message });
-            }
+            });
         };
     </script>
 </body>
