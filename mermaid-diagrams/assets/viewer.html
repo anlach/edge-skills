@@ -322,6 +322,25 @@
             return '';
         }
 
+        // Fix common Mermaid syntax errors that LLMs generate.
+        // Gantt chart: LLMs write "Task A: Requirements Gathering, a1, ..."
+        // but commas are field separators, causing parse errors.
+        function sanitizeMermaidCode(code) {
+            var lines = code.split('\n');
+            var inGantt = false;
+            for (var i = 0; i < lines.length; i++) {
+                var trimmed = lines[i].trim().toLowerCase();
+                if (trimmed === 'gantt') { inGantt = true; continue; }
+                if (inGantt) {
+                    var match = lines[i].match(/^(\s*)([^:]+):\s*([^,:]+),\s*([a-z]\w*)\s*,\s*(.+)/i);
+                    if (match) {
+                        lines[i] = match[1] + match[2].trim() + ' ' + match[3].trim() + ' :' + match[4] + ', ' + match[5];
+                    }
+                }
+            }
+            return lines.join('\n');
+        }
+
         // ── RENDER ──
 
         (function() {
@@ -333,6 +352,9 @@
                 err.style.display = 'block';
                 return;
             }
+
+            // Fix common syntax errors (e.g. Gantt task descriptions with commas)
+            code = sanitizeMermaidCode(code);
             _mermaidCode = code;
 
             var id = 'mv-' + Math.random().toString(36).substr(2, 9);

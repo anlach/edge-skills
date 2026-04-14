@@ -67,6 +67,47 @@
             return data;
         }
 
+        // Fix common Mermaid syntax errors that LLMs generate.
+        // Gantt chart issue: LLMs write "Task A: Requirements Gathering, a1, ..."
+        // but Mermaid's parser treats commas as field separators, so the extra
+        // text between ":" and the task ID causes "Cannot read properties of
+        // undefined (reading 'type')". Fix: if a gantt task line has a comma
+        // between ":" and the task ID, move the extra text before the colon.
+        function sanitizeMermaidCode(code) {
+            var lines = code.split('\n');
+            var inGantt = false;
+            for (var i = 0; i < lines.length; i++) {
+                var trimmed = lines[i].trim().toLowerCase();
+                if (trimmed === 'gantt') {
+                    inGantt = true;
+                    continue;
+                }
+                // Stop fixing at the next diagram type declaration
+                if (inGantt && /^[a-z]/.test(trimmed) && !/^(section|title|dateformat|axisformat|excludes|includes|todaymarker|tickinterval)$/i.test(trimmed.split(/\s/)[0])) {
+                    // Could be another diagram type — stop
+                    // Actually, gantt directives are limited, so we keep going
+                    // but skip section/title lines
+                }
+                if (inGantt) {
+                    // Fix: "Task A: Some Description, id, ..." → "Some Description :id, ..."
+                    // Pattern: word colon text comma word comma ...
+                    // The colon separates title from task spec. If there's text
+                    // with commas between the colon and the task ID, merge it.
+                    var match = lines[i].match(/^(\s*)([^:]+):\s*([^,:]+),\s*([a-z]\w*)\s*,\s*(.+)/i);
+                    if (match) {
+                        var indent = match[1];
+                        var prefix = match[2].trim();
+                        var desc = match[3].trim();
+                        var taskId = match[4];
+                        var rest = match[5];
+                        // Reconstruct: "prefix desc :taskId, rest"
+                        lines[i] = indent + prefix + ' ' + desc + ' :' + taskId + ', ' + rest;
+                    }
+                }
+            }
+            return lines.join('\n');
+        }
+
         // Encode mermaid code as base64 for passing in a URL hash.
         function encodeMermaidForUrl(code) {
             var bytes = new TextEncoder().encode(code);
@@ -83,6 +124,9 @@
             if (!mermaidCode || typeof mermaidCode !== 'string') {
                 return JSON.stringify({ result: null, error: 'No mermaid code provided.' });
             }
+
+            // Fix common syntax errors (e.g. Gantt task descriptions with commas)
+            mermaidCode = sanitizeMermaidCode(mermaidCode);
 
             return new Promise(function(resolve, reject) {
                 var id = 'mermaid-' + Math.random().toString(36).substr(2, 9);
