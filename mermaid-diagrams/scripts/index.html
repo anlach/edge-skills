@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mermaid Diagrams</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #1a1a2e; color: #e0e0e0; font-family: system-ui, -apple-system, sans-serif; }
+
+        #diagram-container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 24px;
+            min-height: 100vh;
+        }
+
+        #diagram-wrapper {
+            position: relative;
+            display: inline-block;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        #diagram-wrapper img {
+            display: block;
+            max-width: 100%;
+            height: auto;
+        }
+
+        #copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.9);
+            color: #333;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            transition: all 0.2s ease;
+            opacity: 0.7;
+            z-index: 10;
+        }
+
+        #copy-btn:hover {
+            opacity: 1;
+            background: #ffffff;
+            transform: scale(1.05);
+        }
+
+        #copy-btn:active {
+            transform: scale(0.95);
+        }
+
+        #copy-btn.copied {
+            background: #4caf50;
+            color: white;
+            opacity: 1;
+        }
+
+        /* Clipboard icon (SVG inline) */
+        #copy-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        #status-msg {
+            margin-top: 16px;
+            font-size: 14px;
+            color: #aaa;
+            text-align: center;
+            min-height: 20px;
+        }
+
+        #error-msg {
+            margin-top: 12px;
+            padding: 12px 20px;
+            background: #ff5252;
+            color: white;
+            border-radius: 8px;
+            font-size: 14px;
+            display: none;
+            max-width: 600px;
+            word-break: break-word;
+        }
+
+        #loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #333;
+            border-top: 3px solid #7c4dff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div id="diagram-container">
+        <div id="loading">
+            <div class="spinner"></div>
+            <p style="margin-top:16px; color:#aaa;">Rendering diagram...</p>
+        </div>
+        <div id="diagram-wrapper" style="display:none;">
+            <img id="diagram-img" src="" alt="Mermaid Diagram" />
+            <button id="copy-btn" title="Copy image to clipboard">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+            </button>
+        </div>
+        <div id="status-msg"></div>
+        <div id="error-msg"></div>
+    </div>
+
+    <canvas id="render-canvas" style="display: none;"></canvas>
+
+    <script>
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'default',
+            flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' },
+            sequence: { useMaxWidth: true },
+            er: { useMaxWidth: true }
+        });
+
+        // Store the rendered canvas for clipboard copying.
+        let _lastCanvas = null;
+
+        // Copy button handler.
+        document.getElementById('copy-btn').addEventListener('click', async () => {
+            const btn = document.getElementById('copy-btn');
+            const statusMsg = document.getElementById('status-msg');
+
+            if (!_lastCanvas) {
+                statusMsg.textContent = 'No diagram to copy.';
+                return;
+            }
+
+            try {
+                // Convert canvas to PNG blob and copy to clipboard.
+                const blob = await new Promise(resolve => _lastCanvas.toBlob(resolve, 'image/png'));
+                await navigator.clipboard.write([
+                    new ClipboardItem({ 'image/png': blob })
+                ]);
+
+                // Visual feedback.
+                btn.classList.add('copied');
+                btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>`;
+                statusMsg.textContent = 'Copied to clipboard! ✓';
+
+                setTimeout(() => {
+                    btn.classList.remove('copied');
+                    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>`;
+                    statusMsg.textContent = '';
+                }, 2000);
+
+            } catch (e) {
+                console.error('Clipboard copy failed:', e);
+                statusMsg.textContent = 'Copy failed — try right-click → Copy Image';
+            }
+        });
+
+        window['ai_edge_gallery_get_result'] = async (data, secret) => {
+            try {
+                // Sanitize raw control characters before JSON.parse.
+                const sanitized = data.replace(/[\x00-\x1f]/g, (ch) => {
+                    const code = ch.charCodeAt(0);
+                    switch(code) {
+                        case 0x0a: return '\\n';
+                        case 0x0d: return '\\r';
+                        case 0x09: return '\\t';
+                        default: return '\\u' + ('0000' + code.toString(16)).slice(-4);
+                    }
+                });
+                const jsonData = JSON.parse(sanitized);
+                const mermaidCode = jsonData.mermaid || jsonData.code || '';
+
+                if (!mermaidCode || typeof mermaidCode !== 'string') {
+                    return JSON.stringify({ result: null, image: null, error: 'No mermaid code provided.' });
+                }
+
+                // Render mermaid to SVG.
+                const id = 'mermaid-' + Math.random().toString(36).substr(2, 9);
+                const { svg } = await mermaid.render(id, mermaidCode);
+
+                // Parse SVG dimensions.
+                const parser = new DOMParser();
+                const svgDoc = parser.parseFromString(svg, 'image/svg+xml');
+                const svgEl = svgDoc.querySelector('svg');
+                const vb = svgEl.getAttribute('viewBox');
+                let w = 800, h = 600;
+                if (vb) {
+                    const parts = vb.split(/[\s,]+/).map(Number);
+                    if (parts.length === 4) { w = parts[2]; h = parts[3]; }
+                }
+                const ew = svgEl.getAttribute('width');
+                const eh = svgEl.getAttribute('height');
+                if (ew && !ew.endsWith('%')) w = parseFloat(ew);
+                if (eh && !eh.endsWith('%')) h = parseFloat(eh);
+
+                // Use data URI instead of blob URL to avoid tainted canvas.
+                const svgDataUri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+
+                // Draw onto canvas.
+                const scale = 2;
+                const canvasW = Math.min(Math.round(w * scale), 2048);
+                const canvasH = Math.min(Math.round(h * scale), 2048);
+
+                const base64 = await new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.getElementById('render-canvas');
+                        canvas.width = canvasW;
+                        canvas.height = canvasH;
+                        const ctx = canvas.getContext('2d');
+                        ctx.clearRect(0, 0, canvasW, canvasH);
+                        ctx.drawImage(img, 0, 0, canvasW, canvasH);
+
+                        // Store for clipboard copy button.
+                        _lastCanvas = canvas;
+
+                        // Show the rendered image in the viewer.
+                        const diagramImg = document.getElementById('diagram-img');
+                        diagramImg.src = canvas.toDataURL('image/png');
+                        document.getElementById('loading').style.display = 'none';
+                        document.getElementById('diagram-wrapper').style.display = 'inline-block';
+
+                        resolve(canvas.toDataURL('image/png'));
+                    };
+                    img.onerror = () => reject(new Error('Failed to load SVG'));
+                    img.src = svgDataUri;
+                });
+
+                return JSON.stringify({
+                    result: 'Diagram rendered',
+                    image: { base64: base64 },
+                    error: null
+                });
+
+            } catch (e) {
+                console.error(e);
+                // Show error in viewer.
+                document.getElementById('loading').style.display = 'none';
+                const errorEl = document.getElementById('error-msg');
+                errorEl.textContent = 'Error: ' + e.message;
+                errorEl.style.display = 'block';
+
+                return JSON.stringify({ result: null, image: null, error: 'Failed: ' + e.message });
+            }
+        };
+    </script>
+</body>
+</html>
