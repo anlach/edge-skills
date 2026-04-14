@@ -11,41 +11,56 @@
             width: 100%; height: 100%;
             background: #1a1a2e; color: #e0e0e0;
             font-family: system-ui, -apple-system, sans-serif;
-            overflow-x: hidden;
+            overflow: hidden;
             -webkit-tap-highlight-color: transparent;
         }
+        #app {
+            display: flex; flex-direction: column; width: 100%; height: 100%;
+        }
 
-        /* === NORMAL VIEW (inside chat) === */
-        #normal-view {
-            display: flex; flex-direction: column; align-items: center;
-            padding: 8px; width: 100%;
+        /* Zoom / pan area fills available space above chips */
+        #zoom-area {
+            flex: 1; position: relative; overflow: hidden;
+            touch-action: none;
+            -webkit-user-select: none; user-select: none;
+            background: #1a1a2e;
         }
-        #diagram-wrapper {
-            position: relative; display: inline-block; background: #1e1e2e;
-            border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.4);
-            overflow: hidden; max-width: 100%;
+        #zoom-target {
+            position: absolute; transform-origin: 0 0;
+            will-change: transform;
         }
-        #diagram-wrapper img {
-            display: block; max-width: 100%; height: auto; border-radius: 12px;
+        #zoom-target svg {
+            display: block; max-width: none; max-height: none;
         }
-        /* Fullscreen button overlaid on diagram */
-        #fullscreen-btn {
+
+        /* Zoom indicator */
+        #zoom-info {
             position: absolute; top: 8px; right: 8px;
-            width: 36px; height: 36px;
-            border: 1px solid rgba(255,255,255,0.2); border-radius: 10px;
-            background: rgba(30,30,46,0.85); color: #c0c0e0;
-            cursor: pointer; display: flex; align-items: center;
-            justify-content: center; z-index: 5;
-            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-            transition: background 0.15s ease;
+            font-size: 11px; color: #8888aa;
+            background: rgba(17,17,34,0.8);
+            padding: 3px 8px; border-radius: 6px;
+            z-index: 5; pointer-events: none;
+            backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
         }
-        #fullscreen-btn:active { background: rgba(60,60,80,0.9); }
-        #fullscreen-btn svg { width: 18px; height: 18px; }
 
-        /* === CHIP BAR (shared between views) === */
+        /* Hint text that fades away */
+        #hint {
+            position: absolute; bottom: 8px; left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.6); color: #999;
+            padding: 5px 14px; border-radius: 16px;
+            font-size: 11px; z-index: 5; pointer-events: none;
+            white-space: nowrap;
+            transition: opacity 0.8s ease;
+        }
+
+        /* Chip bar at bottom */
         .chip-bar {
-            display: flex; gap: 8px; margin-top: 8px;
+            display: flex; gap: 8px; padding: 8px 10px;
             justify-content: center; flex-wrap: wrap;
+            background: rgba(26,26,46,0.95);
+            border-top: 1px solid rgba(255,255,255,0.06);
+            flex-shrink: 0;
         }
         .chip {
             display: inline-flex; align-items: center; gap: 5px;
@@ -61,75 +76,12 @@
         .chip svg { width: 14px; height: 14px; flex-shrink: 0; }
         .chip.success { background: rgba(46,125,50,0.35); border-color: #4caf50; color: #a5d6a7; }
 
-        /* === FULLSCREEN OVERLAY === */
-        #fs-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #111122; z-index: 9999;
-            display: none; flex-direction: column;
-        }
-        #fs-overlay.active { display: flex; }
-        #fs-top-bar {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 6px 8px; background: rgba(17,17,34,0.92);
-            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-            z-index: 10; flex-shrink: 0;
-            border-bottom: 1px solid rgba(255,255,255,0.06);
-        }
-        #fs-close-btn {
-            width: 36px; height: 36px; border: 1px solid rgba(255,255,255,0.15);
-            border-radius: 10px; background: rgba(255,255,255,0.06);
-            color: #c0c0e0; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-        }
-        #fs-close-btn:active { background: rgba(255,255,255,0.14); }
-        #fs-close-btn svg { width: 18px; height: 18px; }
-        #fs-title {
-            font-size: 13px; color: #8888aa; font-weight: 500;
-            max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-        }
-        #fs-zoom-info {
-            font-size: 11px; color: #6666aa; background: rgba(100,100,180,0.12);
-            padding: 3px 8px; border-radius: 6px;
-        }
-
-        /* Zoom area fills remaining space */
-        #fs-zoom-area {
-            flex: 1; position: relative; overflow: hidden;
-            touch-action: none; /* Prevent browser zoom/scroll */
-            -webkit-user-select: none; user-select: none;
-        }
-        #fs-zoom-target {
-            position: absolute; transform-origin: 0 0;
-            will-change: transform;
-        }
-        #fs-zoom-target svg {
-            display: block; max-width: none; max-height: none;
-        }
-
-        /* Bottom bar in fullscreen */
-        #fs-bottom-bar {
-            display: flex; justify-content: center; gap: 8px;
-            padding: 8px; background: rgba(17,17,34,0.92);
-            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-            z-index: 10; flex-shrink: 0;
-            border-top: 1px solid rgba(255,255,255,0.06);
-        }
-
-        /* Pinch hint (fades out) */
-        #fs-hint {
-            position: absolute; bottom: 60px; left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.7); color: #aaa;
-            padding: 6px 16px; border-radius: 20px;
-            font-size: 12px; z-index: 15;
-            transition: opacity 0.6s ease;
-            pointer-events: none;
-        }
-
-        /* === LOADING / ERROR === */
+        /* Loading */
         #loading {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             display: flex; flex-direction: column; align-items: center;
-            justify-content: center; padding: 40px; width: 100%;
+            justify-content: center; z-index: 20;
+            background: #1a1a2e;
         }
         .spinner {
             width: 32px; height: 32px; border: 3px solid #333;
@@ -137,75 +89,35 @@
             animation: spin 0.8s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
-        #error-msg {
-            margin-top: 10px; padding: 10px 16px; background: #c62828; color: white;
-            border-radius: 8px; font-size: 13px; display: none;
-            max-width: 100%; word-break: break-word;
-        }
 
-        /* === ORIENTATION HANDLING === */
-        @media (orientation: landscape) {
-            #fs-zoom-area { min-height: 0; }
+        /* Error */
+        #error-msg {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+            padding: 12px 20px; background: #c62828; color: white;
+            border-radius: 8px; font-size: 13px; display: none;
+            max-width: 90%; word-break: break-word; z-index: 20;
         }
     </style>
 </head>
 <body>
-    <!-- NORMAL VIEW (shown inline in chat) -->
-    <div id="normal-view">
-        <div id="loading">
-            <div class="spinner"></div>
-            <p style="margin-top:12px; color:#aaa; font-size:13px;">Rendering diagram...</p>
+    <div id="app">
+        <div id="zoom-area">
+            <div id="zoom-target"></div>
+            <div id="zoom-info">1.0x</div>
+            <div id="hint">Pinch to zoom \u00b7 Drag to pan \u00b7 Double-tap to reset</div>
         </div>
-        <div id="diagram-wrapper" style="display:none;">
-            <img id="diagram-img" src="" alt="Mermaid Diagram" />
-            <button id="fullscreen-btn" title="View fullscreen with zoom">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M8 3H5a2 2 0 0 0-2 2v3"></path>
-                    <path d="M21 8V5a2 2 0 0 0-2-2h-3"></path>
-                    <path d="M3 16v3a2 2 0 0 0 2 2h3"></path>
-                    <path d="M16 21h3a2 2 0 0 0 2-2v-3"></path>
-                </svg>
-            </button>
-        </div>
-        <div class="chip-bar" id="normal-chips" style="display:none;">
+        <div class="chip-bar">
             <button class="chip" id="copy-code-btn">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                 Copy Code
             </button>
-            <button class="chip" id="save-img-btn">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                Save Image
-            </button>
+        </div>
+        <div id="loading">
+            <div class="spinner"></div>
+            <p style="margin-top:12px; color:#aaa; font-size:13px;">Rendering diagram...</p>
         </div>
         <div id="error-msg"></div>
     </div>
-
-    <!-- FULLSCREEN OVERLAY -->
-    <div id="fs-overlay">
-        <div id="fs-top-bar">
-            <button id="fs-close-btn" title="Close">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </button>
-            <span id="fs-title">Mermaid Diagram</span>
-            <span id="fs-zoom-info">1.0x</span>
-        </div>
-        <div id="fs-zoom-area">
-            <div id="fs-zoom-target"></div>
-            <div id="fs-hint">Pinch to zoom \u00b7 Drag to pan \u00b7 Double-tap to reset</div>
-        </div>
-        <div id="fs-bottom-bar">
-            <button class="chip" id="copy-code-btn-fs">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                Copy Code
-            </button>
-            <button class="chip" id="save-img-btn-fs">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                Save Image
-            </button>
-        </div>
-    </div>
-
-    <canvas id="render-canvas" style="display: none;"></canvas>
 
     <script>
         mermaid.initialize({
@@ -230,32 +142,22 @@
 
         // ── STATE ──
         var _mermaidCode = '';
-        var _svgString = '';
-        var _pngBase64 = '';
+        var _svgW = 800, _svgH = 600;
 
-        // Zoom state for fullscreen
-        var zoomState = { scale: 1, panX: 0, panY: 0, minScale: 0.3, maxScale: 10 };
-        var gestureState = {
-            active: false,
-            initialScale: 1,
-            initialPanX: 0,
-            initialPanY: 0,
-            initialDist: 0,
-            initialMidX: 0,
-            initialMidY: 0,
-            startPanX: 0,
-            startPanY: 0,
-            startX: 0,
-            startY: 0,
+        var zoomState = { scale: 1, panX: 0, panY: 0, minScale: 0.1, maxScale: 20 };
+        var gesture = {
+            startPanX: 0, startPanY: 0, startX: 0, startY: 0,
+            initScale: 1, initPanX: 0, initPanY: 0,
+            initDist: 0, initMidX: 0, initMidY: 0,
             lastTapTime: 0
         };
 
-        // SVG icons for chip state changes
         var CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
 
-        // ── COPY / SAVE HANDLERS ──
+        // ── COPY ──
 
-        function copyMermaidCode(btn) {
+        document.getElementById('copy-code-btn').addEventListener('click', function() {
+            var btn = this;
             if (!_mermaidCode) return;
             try {
                 navigator.clipboard.writeText(_mermaidCode).then(function() {
@@ -266,7 +168,7 @@
             } catch (e) {
                 fallbackCopy(_mermaidCode, btn);
             }
-        }
+        });
 
         function fallbackCopy(text, btn) {
             var ta = document.createElement('textarea');
@@ -275,120 +177,39 @@
             ta.style.left = '-9999px';
             document.body.appendChild(ta);
             ta.select();
-            try {
-                document.execCommand('copy');
-                flashChip(btn, 'Copied!');
-            } catch (e) {
-                flashChip(btn, 'Failed');
-            }
+            try { document.execCommand('copy'); flashChip(btn, 'Copied!'); }
+            catch (e) { flashChip(btn, 'Failed'); }
             document.body.removeChild(ta);
         }
 
-        function saveImage(btn) {
-            if (!_pngBase64) return;
-            try {
-                var link = document.createElement('a');
-                link.download = 'mermaid-diagram.png';
-                link.href = _pngBase64;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                flashChip(btn, 'Saved!');
-            } catch (e) {
-                flashChip(btn, 'Failed');
-            }
-        }
-
         function flashChip(btn, label) {
-            var origHTML = btn.innerHTML;
+            var orig = btn.innerHTML;
             btn.classList.add('success');
             btn.innerHTML = CHECK_SVG + ' ' + label;
-            setTimeout(function() {
-                btn.classList.remove('success');
-                btn.innerHTML = origHTML;
-            }, 1800);
-        }
-
-        // Wire up all chip buttons (normal + fullscreen)
-        document.getElementById('copy-code-btn').addEventListener('click', function() { copyMermaidCode(this); });
-        document.getElementById('save-img-btn').addEventListener('click', function() { saveImage(this); });
-        document.getElementById('copy-code-btn-fs').addEventListener('click', function() { copyMermaidCode(this); });
-        document.getElementById('save-img-btn-fs').addEventListener('click', function() { saveImage(this); });
-
-        // ── FULLSCREEN TOGGLE ──
-
-        document.getElementById('fullscreen-btn').addEventListener('click', openFullscreen);
-        document.getElementById('fs-close-btn').addEventListener('click', closeFullscreen);
-
-        function openFullscreen() {
-            var overlay = document.getElementById('fs-overlay');
-            overlay.classList.add('active');
-
-            // Inject SVG into zoom target for crisp zooming
-            var target = document.getElementById('fs-zoom-target');
-            target.innerHTML = _svgString;
-            var svgEl = target.querySelector('svg');
-            if (svgEl) {
-                // Remove fixed dimensions, let the SVG be sized by our layout
-                var vb = svgEl.getAttribute('viewBox');
-                var svgW = 800, svgH = 600;
-                if (vb) {
-                    var parts = vb.split(/[\s,]+/).map(Number);
-                    if (parts.length === 4) { svgW = parts[2]; svgH = parts[3]; }
-                }
-                // Store dimensions for zoom math
-                target._svgW = svgW;
-                target._svgH = svgH;
-                svgEl.setAttribute('width', svgW);
-                svgEl.setAttribute('height', svgH);
-                svgEl.style.maxWidth = 'none';
-                svgEl.style.maxHeight = 'none';
-            }
-
-            // Reset zoom state and center
-            resetZoom();
-
-            // Fade out hint after 3 seconds
-            setTimeout(function() {
-                var hint = document.getElementById('fs-hint');
-                if (hint) hint.style.opacity = '0';
-            }, 3000);
-        }
-
-        function closeFullscreen() {
-            document.getElementById('fs-overlay').classList.remove('active');
+            setTimeout(function() { btn.classList.remove('success'); btn.innerHTML = orig; }, 1800);
         }
 
         // ── ZOOM / PAN ──
 
-        function resetZoom() {
-            var area = document.getElementById('fs-zoom-area');
-            var target = document.getElementById('fs-zoom-target');
+        function fitToArea() {
+            var area = document.getElementById('zoom-area');
             var aW = area.clientWidth;
             var aH = area.clientHeight;
-            var cW = target._svgW || 800;
-            var cH = target._svgH || 600;
-
-            // Fit content to area
-            var fitScale = Math.min(aW / cW, aH / cH);
+            if (aW === 0 || aH === 0) return;
+            var fitScale = Math.min(aW / _svgW, aH / _svgH);
             zoomState.scale = fitScale;
-            zoomState.minScale = fitScale * 0.5;
-            zoomState.maxScale = fitScale * 10;
-            zoomState.panX = (aW - cW * fitScale) / 2;
-            zoomState.panY = (aH - cH * fitScale) / 2;
+            zoomState.panX = (aW - _svgW * fitScale) / 2;
+            zoomState.panY = (aH - _svgH * fitScale) / 2;
             applyZoom();
         }
 
         function applyZoom() {
-            var target = document.getElementById('fs-zoom-target');
+            var target = document.getElementById('zoom-target');
             target.style.transform = 'translate(' + zoomState.panX + 'px,' + zoomState.panY + 'px) scale(' + zoomState.scale + ')';
-            // Update zoom indicator
-            var area = document.getElementById('fs-zoom-area');
-            var cW = target._svgW || 800;
-            var fitScale = Math.min(area.clientWidth / cW, area.clientHeight / (target._svgH || 600));
+            var area = document.getElementById('zoom-area');
+            var fitScale = Math.min(area.clientWidth / _svgW, area.clientHeight / _svgH);
             var zoomX = Math.round(zoomState.scale / fitScale * 10) / 10;
-            var info = document.getElementById('fs-zoom-info');
-            if (info) info.textContent = zoomX.toFixed(1) + 'x';
+            document.getElementById('zoom-info').textContent = zoomX.toFixed(1) + 'x';
         }
 
         function getDist(t1, t2) {
@@ -397,47 +218,47 @@
             return Math.sqrt(dx * dx + dy * dy);
         }
 
-        // Touch event handler for the zoom area
-        var zoomArea = document.getElementById('fs-zoom-area');
+        var zoomArea = document.getElementById('zoom-area');
 
         zoomArea.addEventListener('touchstart', function(e) {
             e.preventDefault();
             if (e.touches.length === 1) {
-                gestureState.startPanX = zoomState.panX;
-                gestureState.startPanY = zoomState.panY;
-                gestureState.startX = e.touches[0].clientX;
-                gestureState.startY = e.touches[0].clientY;
+                gesture.startPanX = zoomState.panX;
+                gesture.startPanY = zoomState.panY;
+                gesture.startX = e.touches[0].clientX;
+                gesture.startY = e.touches[0].clientY;
             } else if (e.touches.length === 2) {
-                gestureState.initialScale = zoomState.scale;
-                gestureState.initialPanX = zoomState.panX;
-                gestureState.initialPanY = zoomState.panY;
-                gestureState.initialDist = getDist(e.touches[0], e.touches[1]);
-                gestureState.initialMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-                gestureState.initialMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                gesture.initScale = zoomState.scale;
+                gesture.initPanX = zoomState.panX;
+                gesture.initPanY = zoomState.panY;
+                gesture.initDist = getDist(e.touches[0], e.touches[1]);
+                gesture.initMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                gesture.initMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
             }
         }, { passive: false });
 
         zoomArea.addEventListener('touchmove', function(e) {
             e.preventDefault();
             if (e.touches.length === 1) {
-                // Single finger pan
-                var dx = e.touches[0].clientX - gestureState.startX;
-                var dy = e.touches[0].clientY - gestureState.startY;
-                zoomState.panX = gestureState.startPanX + dx;
-                zoomState.panY = gestureState.startPanY + dy;
+                var dx = e.touches[0].clientX - gesture.startX;
+                var dy = e.touches[0].clientY - gesture.startY;
+                zoomState.panX = gesture.startPanX + dx;
+                zoomState.panY = gesture.startPanY + dy;
                 applyZoom();
             } else if (e.touches.length === 2) {
-                // Two finger pinch zoom
                 var newDist = getDist(e.touches[0], e.touches[1]);
-                var ratio = newDist / gestureState.initialDist;
-                var newScale = gestureState.initialScale * ratio;
+                var ratio = newDist / gesture.initDist;
+                var newScale = gesture.initScale * ratio;
+                var area = document.getElementById('zoom-area');
+                var fitScale = Math.min(area.clientWidth / _svgW, area.clientHeight / _svgH);
+                zoomState.minScale = fitScale * 0.3;
+                zoomState.maxScale = fitScale * 12;
                 newScale = Math.max(zoomState.minScale, Math.min(zoomState.maxScale, newScale));
 
-                // Keep the initial midpoint fixed on screen
-                var midX = gestureState.initialMidX;
-                var midY = gestureState.initialMidY;
-                zoomState.panX = midX - (midX - gestureState.initialPanX) * (newScale / gestureState.initialScale);
-                zoomState.panY = midY - (midY - gestureState.initialPanY) * (newScale / gestureState.initialScale);
+                var midX = gesture.initMidX;
+                var midY = gesture.initMidY;
+                zoomState.panX = midX - (midX - gesture.initPanX) * (newScale / gesture.initScale);
+                zoomState.panY = midY - (midY - gesture.initPanY) * (newScale / gesture.initScale);
                 zoomState.scale = newScale;
                 applyZoom();
             }
@@ -445,47 +266,36 @@
 
         zoomArea.addEventListener('touchend', function(e) {
             if (e.touches.length === 0) {
-                // Check for double-tap
                 var now = Date.now();
-                if (now - gestureState.lastTapTime < 300) {
-                    // Double tap: toggle between fit and 3x zoom
-                    var target = document.getElementById('fs-zoom-target');
-                    var area = document.getElementById('fs-zoom-area');
-                    var cW = target._svgW || 800;
-                    var fitScale = Math.min(area.clientWidth / cW, area.clientHeight / (target._svgH || 600));
-
-                    if (zoomState.scale > fitScale * 1.5) {
-                        // Reset to fit
-                        zoomState.scale = fitScale;
-                        zoomState.panX = (area.clientWidth - cW * fitScale) / 2;
-                        zoomState.panY = (area.clientHeight - (target._svgH || 600) * fitScale) / 2;
+                if (now - gesture.lastTapTime < 300) {
+                    var area = document.getElementById('zoom-area');
+                    var fitScale = Math.min(area.clientWidth / _svgW, area.clientHeight / _svgH);
+                    if (Math.abs(zoomState.scale - fitScale) > fitScale * 0.1) {
+                        // Zoomed in — reset to fit
+                        fitToArea();
                     } else {
-                        // Zoom to 3x fit, centered on tap point
+                        // At fit — zoom to 3x centered on tap
                         var tapX = e.changedTouches[0].clientX;
                         var tapY = e.changedTouches[0].clientY;
                         var newScale = fitScale * 3;
                         zoomState.panX = tapX - (tapX - zoomState.panX) * (newScale / zoomState.scale);
                         zoomState.panY = tapY - (tapY - zoomState.panY) * (newScale / zoomState.scale);
                         zoomState.scale = newScale;
+                        applyZoom();
                     }
-                    applyZoom();
                 }
-                gestureState.lastTapTime = now;
+                gesture.lastTapTime = now;
             }
         }, { passive: false });
 
-        // Handle orientation change: re-center the diagram
+        // Re-center on orientation change
         var resizeTimer = null;
         window.addEventListener('resize', function() {
             clearTimeout(resizeTimer);
-            resizeTimer = setTimeout(function() {
-                if (document.getElementById('fs-overlay').classList.contains('active')) {
-                    resetZoom();
-                }
-            }, 150);
+            resizeTimer = setTimeout(fitToArea, 150);
         });
 
-        // ── MERMAID CODE EXTRACTION ──
+        // ── MERMAID CODE FROM URL ──
 
         function getMermaidCode() {
             var hash = window.location.hash;
@@ -494,9 +304,7 @@
                     var encoded = hash.substring(1);
                     var decoded = atob(encoded);
                     var bytes = new Uint8Array(decoded.length);
-                    for (var i = 0; i < decoded.length; i++) {
-                        bytes[i] = decoded.charCodeAt(i);
-                    }
+                    for (var i = 0; i < decoded.length; i++) bytes[i] = decoded.charCodeAt(i);
                     return new TextDecoder().decode(bytes);
                 } catch (e) {
                     return decodeURIComponent(hash.substring(1));
@@ -505,77 +313,56 @@
             return '';
         }
 
-        // ── MAIN RENDER ──
+        // ── RENDER ──
 
         (function() {
-            var mermaidCode = getMermaidCode();
-
-            if (!mermaidCode) {
+            var code = getMermaidCode();
+            if (!code) {
                 document.getElementById('loading').style.display = 'none';
-                var errorEl = document.getElementById('error-msg');
-                errorEl.textContent = 'No mermaid code provided.';
-                errorEl.style.display = 'block';
+                var err = document.getElementById('error-msg');
+                err.textContent = 'No mermaid code provided.';
+                err.style.display = 'block';
                 return;
             }
+            _mermaidCode = code;
 
-            _mermaidCode = mermaidCode;
+            var id = 'mv-' + Math.random().toString(36).substr(2, 9);
+            mermaid.render(id, code).then(function(result) {
+                var target = document.getElementById('zoom-target');
+                target.innerHTML = result.svg;
 
-            var id = 'mermaid-viewer-' + Math.random().toString(36).substr(2, 9);
-            mermaid.render(id, mermaidCode).then(function(result) {
-                _svgString = result.svg;
-
-                // Parse SVG dimensions for PNG rendering
-                var parser = new DOMParser();
-                var svgDoc = parser.parseFromString(_svgString, 'image/svg+xml');
-                var svgEl = svgDoc.querySelector('svg');
-                var vb = svgEl.getAttribute('viewBox');
-                var w = 800, h = 600;
-                if (vb) {
-                    var parts = vb.split(/[\s,]+/).map(Number);
-                    if (parts.length === 4) { w = parts[2]; h = parts[3]; }
+                var svgEl = target.querySelector('svg');
+                if (svgEl) {
+                    var vb = svgEl.getAttribute('viewBox');
+                    if (vb) {
+                        var parts = vb.split(/[\s,]+/).map(Number);
+                        if (parts.length === 4) { _svgW = parts[2]; _svgH = parts[3]; }
+                    }
+                    var ew = svgEl.getAttribute('width');
+                    var eh = svgEl.getAttribute('height');
+                    if (ew && !ew.endsWith('%')) _svgW = parseFloat(ew);
+                    if (eh && !eh.endsWith('%')) _svgH = parseFloat(eh);
+                    svgEl.setAttribute('width', _svgW);
+                    svgEl.setAttribute('height', _svgH);
+                    svgEl.style.maxWidth = 'none';
+                    svgEl.style.maxHeight = 'none';
                 }
-                var ew = svgEl.getAttribute('width');
-                var eh = svgEl.getAttribute('height');
-                if (ew && !ew.endsWith('%')) w = parseFloat(ew);
-                if (eh && !eh.endsWith('%')) h = parseFloat(eh);
 
-                // Render PNG at 2x for the inline preview
-                var svgDataUri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(_svgString);
-                var scale = 2;
-                var canvasW = Math.min(Math.round(w * scale), 2048);
-                var canvasH = Math.min(Math.round(h * scale), 2048);
+                document.getElementById('loading').style.display = 'none';
 
-                var img = new Image();
-                img.onload = function() {
-                    var canvas = document.getElementById('render-canvas');
-                    canvas.width = canvasW;
-                    canvas.height = canvasH;
-                    var ctx = canvas.getContext('2d');
-                    ctx.fillStyle = '#1e1e2e';
-                    ctx.fillRect(0, 0, canvasW, canvasH);
-                    ctx.drawImage(img, 0, 0, canvasW, canvasH);
+                // Fit diagram to area
+                fitToArea();
 
-                    _pngBase64 = canvas.toDataURL('image/png');
-
-                    // Show the inline preview
-                    var diagramImg = document.getElementById('diagram-img');
-                    diagramImg.src = _pngBase64;
-                    document.getElementById('loading').style.display = 'none';
-                    document.getElementById('diagram-wrapper').style.display = 'inline-block';
-                    document.getElementById('normal-chips').style.display = 'flex';
-                };
-                img.onerror = function() {
-                    document.getElementById('loading').style.display = 'none';
-                    var errorEl = document.getElementById('error-msg');
-                    errorEl.textContent = 'Failed to render diagram.';
-                    errorEl.style.display = 'block';
-                };
-                img.src = svgDataUri;
+                // Fade hint after 3 seconds
+                setTimeout(function() {
+                    var hint = document.getElementById('hint');
+                    if (hint) hint.style.opacity = '0';
+                }, 3000);
             }).catch(function(e) {
                 document.getElementById('loading').style.display = 'none';
-                var errorEl = document.getElementById('error-msg');
-                errorEl.textContent = 'Error: ' + e.message;
-                errorEl.style.display = 'block';
+                var err = document.getElementById('error-msg');
+                err.textContent = 'Error: ' + e.message;
+                err.style.display = 'block';
             });
         })();
     </script>
