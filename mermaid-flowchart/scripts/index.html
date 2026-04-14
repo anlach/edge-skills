@@ -15,20 +15,49 @@
             flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' }
         });
 
+        // Extract mermaid code from the data parameter.
+        // The Edge Gallery app may pass data with raw newlines and unescaped
+        // double quotes (e.g. pie chart syntax: "Dogs" : 386), which breaks
+        // JSON.parse. We use a multi-strategy approach.
+        function extractMermaidCode(data) {
+            if (typeof data !== 'string') return data || '';
+
+            // Strategy 1: Standard JSON parse after sanitizing control characters.
+            const sanitized = data.replace(/[\x00-\x1f]/g, (ch) => {
+                const code = ch.charCodeAt(0);
+                switch(code) {
+                    case 0x0a: return '\\n';
+                    case 0x0d: return '\\r';
+                    case 0x09: return '\\t';
+                    default: return '\\u' + ('0000' + code.toString(16)).slice(-4);
+                }
+            });
+            try {
+                const json = JSON.parse(sanitized);
+                return json.mermaid || json.code || '';
+            } catch(e) { /* fall through */ }
+
+            // Strategy 2: Extract value from {"mermaid":"..."} or {"code":"..."}
+            // even if the JSON is broken by raw quotes/newlines inside the value.
+            const keyMatch = data.match(/"(?:mermaid|code)"\s*:\s*"/);
+            if (keyMatch) {
+                const startIdx = keyMatch.index + keyMatch[0].length;
+                const lastBrace = data.lastIndexOf('"}');
+                const endIdx = lastBrace > startIdx ? lastBrace : data.lastIndexOf('"');
+                if (endIdx > startIdx) {
+                    let raw = data.substring(startIdx, endIdx);
+                    raw = raw.replace(/\\n/g, '\n').replace(/\\r/g, '\r').replace(/\\t/g, '\t').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+                    return raw;
+                }
+            }
+
+            // Strategy 3: The entire data string is raw mermaid code.
+            return data;
+        }
+
         window['ai_edge_gallery_get_result'] = async (data, secret) => {
             try {
-                // Sanitize raw control characters before JSON.parse.
-                const sanitized = data.replace(/[\x00-\x1f]/g, (ch) => {
-                    const code = ch.charCodeAt(0);
-                    switch(code) {
-                        case 0x0a: return '\\n';
-                        case 0x0d: return '\\r';
-                        case 0x09: return '\\t';
-                        default: return '\\u' + ('0000' + code.toString(16)).slice(-4);
-                    }
-                });
-                const jsonData = JSON.parse(sanitized);
-                const mermaidCode = jsonData.mermaid || jsonData.code || '';
+                const mermaidCode = extractMermaidCode(data);
 
                 if (!mermaidCode || typeof mermaidCode !== 'string') {
                     return JSON.stringify({ result: null, image: null, error: 'No mermaid code provided.' });
