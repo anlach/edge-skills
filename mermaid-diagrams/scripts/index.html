@@ -182,6 +182,17 @@
             return data;
         }
 
+        // Encode mermaid code as base64 for passing in a URL hash.
+        function encodeMermaidForUrl(code) {
+            // UTF-8 safe base64 encoding.
+            var bytes = new TextEncoder().encode(code);
+            var binary = '';
+            for (var i = 0; i < bytes.length; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return btoa(binary);
+        }
+
         window['ai_edge_gallery_get_result'] = function(data, secret) {
             _lastCanvas = null;
             var mermaidCode = extractMermaidCode(data);
@@ -238,9 +249,14 @@
                         document.getElementById('diagram-wrapper').style.display = 'inline-block';
 
                         var base64 = canvas.toDataURL('image/png');
+
+                        // Build webview URL with base64-encoded mermaid code in hash.
+                        var viewerUrl = 'viewer.html#' + encodeMermaidForUrl(mermaidCode);
+
                         resolve(JSON.stringify({
                             result: 'Diagram rendered',
                             image: { base64: base64 },
+                            webview: { url: viewerUrl },
                             error: null
                         }));
                     };

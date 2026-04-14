@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mermaid Diagram</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #1a1a2e; color: #e0e0e0; font-family: system-ui, -apple-system, sans-serif; }
+        #diagram-container {
+            position: relative; display: flex; flex-direction: column;
+            align-items: center; padding: 16px; min-height: 100vh;
+        }
+        #diagram-wrapper {
+            position: relative; display: inline-block; background: #ffffff;
+            border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); overflow: hidden;
+        }
+        #diagram-wrapper img { display: block; max-width: 100%; height: auto; }
+        #copy-btn {
+            position: absolute; top: 10px; right: 10px; width: 40px; height: 40px;
+            border: none; border-radius: 8px; background: rgba(255,255,255,0.9);
+            color: #333; cursor: pointer; display: flex; align-items: center;
+            justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            transition: all 0.2s ease; opacity: 0.7; z-index: 10;
+        }
+        #copy-btn:hover { opacity: 1; background: #ffffff; transform: scale(1.05); }
+        #copy-btn:active { transform: scale(0.95); }
+        #copy-btn.copied { background: #4caf50; color: white; opacity: 1; }
+        #copy-btn svg { width: 20px; height: 20px; }
+        #status-msg { margin-top: 12px; font-size: 14px; color: #aaa; text-align: center; min-height: 20px; }
+        #error-msg {
+            margin-top: 12px; padding: 12px 20px; background: #ff5252; color: white;
+            border-radius: 8px; font-size: 14px; display: none; max-width: 600px; word-break: break-word;
+        }
+        #loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px; }
+        .spinner {
+            width: 40px; height: 40px; border: 3px solid #333; border-top: 3px solid #7c4dff;
+            border-radius: 50%; animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div id="diagram-container">
+        <div id="loading">
+            <div class="spinner"></div>
+            <p style="margin-top:16px; color:#aaa;">Rendering diagram...</p>
+        </div>
+        <div id="diagram-wrapper" style="display:none;">
+            <img id="diagram-img" src="" alt="Mermaid Diagram" />
+            <button id="copy-btn" title="Copy image to clipboard">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            </button>
+        </div>
+        <div id="status-msg"></div>
+        <div id="error-msg"></div>
+    </div>
+
+    <canvas id="render-canvas" style="display: none;"></canvas>
+
+    <script>
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'default',
+            flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' },
+            sequence: { useMaxWidth: true },
+            er: { useMaxWidth: true }
+        });
+
+        var _lastCanvas = null;
+
+        // SVG strings for the copy button (no template literals for WebView compat).
+        var COPY_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+        var CHECK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+
+        document.getElementById('copy-btn').addEventListener('click', function() {
+            var btn = document.getElementById('copy-btn');
+            var statusMsg = document.getElementById('status-msg');
+
+            if (!_lastCanvas) {
+                statusMsg.textContent = 'No diagram to copy.';
+                return;
+            }
+
+            _lastCanvas.toBlob(function(blob) {
+                if (!blob) {
+                    statusMsg.textContent = 'Copy failed.';
+                    return;
+                }
+                try {
+                    navigator.clipboard.write([
+                        new ClipboardItem({ 'image/png': blob })
+                    ]).then(function() {
+                        btn.classList.add('copied');
+                        btn.innerHTML = CHECK_ICON;
+                        statusMsg.textContent = 'Copied to clipboard! \u2713';
+                        setTimeout(function() {
+                            btn.classList.remove('copied');
+                            btn.innerHTML = COPY_ICON;
+                            statusMsg.textContent = '';
+                        }, 2000);
+                    }).catch(function() {
+                        statusMsg.textContent = 'Copy failed \u2014 try long-press the image instead';
+                    });
+                } catch (e) {
+                    statusMsg.textContent = 'Copy not supported in this browser';
+                }
+            }, 'image/png');
+        });
+
+        // Read mermaid code from URL hash (base64-encoded by scripts/index.html).
+        function getMermaidCode() {
+            var hash = window.location.hash;
+            if (hash && hash.length > 1) {
+                // Hash contains base64-encoded mermaid code.
+                try {
+                    var encoded = hash.substring(1);
+                    var decoded = atob(encoded);
+                    // Handle UTF-8.
+                    var bytes = new Uint8Array(decoded.length);
+                    for (var i = 0; i < decoded.length; i++) {
+                        bytes[i] = decoded.charCodeAt(i);
+                    }
+                    return new TextDecoder().decode(bytes);
+                } catch (e) {
+                    // Fallback: try as plain URI-encoded text.
+                    return decodeURIComponent(hash.substring(1));
+                }
+            }
+            return '';
+        }
+
+        // Main rendering.
+        (function() {
+            var mermaidCode = getMermaidCode();
+
+            if (!mermaidCode) {
+                document.getElementById('loading').style.display = 'none';
+                var errorEl = document.getElementById('error-msg');
+                errorEl.textContent = 'No mermaid code provided.';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            var id = 'mermaid-viewer-' + Math.random().toString(36).substr(2, 9);
+            mermaid.render(id, mermaidCode).then(function(result) {
+                var svg = result.svg;
+
+                // Parse SVG dimensions.
+                var parser = new DOMParser();
+                var svgDoc = parser.parseFromString(svg, 'image/svg+xml');
+                var svgEl = svgDoc.querySelector('svg');
+                var vb = svgEl.getAttribute('viewBox');
+                var w = 800, h = 600;
+                if (vb) {
+                    var parts = vb.split(/[\s,]+/).map(Number);
+                    if (parts.length === 4) { w = parts[2]; h = parts[3]; }
+                }
+                var ew = svgEl.getAttribute('width');
+                var eh = svgEl.getAttribute('height');
+                if (ew && !ew.endsWith('%')) w = parseFloat(ew);
+                if (eh && !eh.endsWith('%')) h = parseFloat(eh);
+
+                // Use data URI to avoid tainted canvas.
+                var svgDataUri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+
+                var scale = 2;
+                var canvasW = Math.min(Math.round(w * scale), 2048);
+                var canvasH = Math.min(Math.round(h * scale), 2048);
+
+                var img = new Image();
+                img.onload = function() {
+                    var canvas = document.getElementById('render-canvas');
+                    canvas.width = canvasW;
+                    canvas.height = canvasH;
+                    var ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvasW, canvasH);
+                    ctx.drawImage(img, 0, 0, canvasW, canvasH);
+
+                    _lastCanvas = canvas;
+
+                    var diagramImg = document.getElementById('diagram-img');
+                    diagramImg.src = canvas.toDataURL('image/png');
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('diagram-wrapper').style.display = 'inline-block';
+                };
+                img.onerror = function() {
+                    document.getElementById('loading').style.display = 'none';
+                    var errorEl = document.getElementById('error-msg');
+                    errorEl.textContent = 'Failed to render SVG to image.';
+                    errorEl.style.display = 'block';
+                };
+                img.src = svgDataUri;
+            }).catch(function(e) {
+                document.getElementById('loading').style.display = 'none';
+                var errorEl = document.getElementById('error-msg');
+                errorEl.textContent = 'Error: ' + e.message;
+                errorEl.style.display = 'block';
+            });
+        })();
+    </script>
+</body>
+</html>
